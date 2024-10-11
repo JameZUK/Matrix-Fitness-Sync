@@ -10,7 +10,7 @@ ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
 # Install necessary packages
-RUN pip3 install flask requests
+RUN pip install flask requests
 
 # Set working directory
 # WORKDIR /app
