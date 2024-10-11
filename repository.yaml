@@ -1,3 +1,4 @@
 name: "Matrix-Fitness-Sync"
 url: "https://github.com/JameZUK/Matrix-Fitness-Sync"
 description: "An addon that syncs matri fitness data to home assistant"
+maintainer: James Muller <awesome@example.com>
