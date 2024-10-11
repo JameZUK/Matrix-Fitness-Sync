@@ -7,7 +7,6 @@ RUN rm /usr/lib/python*/EXTERNALLY-MANAGED && \
     python3 -m ensurepip && \
     pip3 install flask requests
 
-
 # Set environment variables
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
