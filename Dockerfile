@@ -27,6 +27,6 @@ EXPOSE 5000/tcp
 
 # Make the run.sh script executable
 # RUN chmod +x /run.sh
-RUN chmod +X run.sh
+RUN chmod +x /run.sh
 # Start the Flask server
-CMD ["run.sh"]
+CMD ["/run.sh"]
