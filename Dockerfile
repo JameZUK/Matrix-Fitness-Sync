@@ -12,7 +12,7 @@ ENV LC_ALL C.UTF-8
 RUN pip install flask requests
 
 # Set working directory
-WORKDIR /app
+# WORKDIR /app
 
 ENV NODE_ENV=production
 
@@ -20,13 +20,13 @@ ENV NODE_ENV=production
 EXPOSE 5000/tcp
 
 # Copy the workout data script
-COPY workout_data.py /
+# COPY workout_data.py /
 
 # Copy the startup script
-COPY run.sh /
+# COPY run.sh /
 
 # Make the run.sh script executable
-RUN chmod +x /run.sh
-
+# RUN chmod +x /run.sh
+RUN chmod +X run.sh
 # Start the Flask server
-CMD ["/run.sh"]
+CMD ["run.sh"]
