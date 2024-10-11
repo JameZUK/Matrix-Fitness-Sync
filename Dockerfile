@@ -3,16 +3,14 @@ ARG BUILD_FROM
 FROM $BUILD_FROM
 
 # Install requirements for add-on
-RUN \
-  apk add --no-cache \
-    python3
+RUN apk add --no-cache python3 py3-pip
 
 # Set environment variables
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
 # Install necessary packages
-RUN pip install flask requests
+RUN pip3 install flask requests
 
 # Set working directory
 # WORKDIR /app
