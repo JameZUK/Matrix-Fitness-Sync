@@ -2,7 +2,10 @@
 ARG BUILD_FROM
 FROM $BUILD_FROM
 
-FROM python:3.10-slim
+# Install requirements for add-on
+RUN \
+  apk add --no-cache \
+    python3
 
 # Set environment variables
 ENV LANG C.UTF-8
