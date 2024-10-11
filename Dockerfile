@@ -29,5 +29,4 @@ COPY run.sh /
 # RUN chmod +x /run.sh
 RUN chmod a+x /run.sh
 # Start the Flask server
-CMD ["ls"]
 CMD ["/run.sh"]
