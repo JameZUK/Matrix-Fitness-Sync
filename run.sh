@@ -1,4 +1,4 @@
-#!/use/bin/with-contenv bashio
+#!/bin/bash
 echo "Starting Flask server..."
 
 # Load options from config
