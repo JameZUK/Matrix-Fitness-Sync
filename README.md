@@ -1,2 +1,2 @@
-# Matrix-Fitness-Sync
-Matrix Fitness API sync for Home Assistant
+# Matrix-API
+Matrix Treadmill API Sync to Home Assistant script
