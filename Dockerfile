@@ -23,7 +23,7 @@ EXPOSE 5000/tcp
 # COPY workout_data.py /
 
 # Copy the startup script
-# COPY run.sh /
+COPY run.sh /
 
 # Make the run.sh script executable
 # RUN chmod +x /run.sh
