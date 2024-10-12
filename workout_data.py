@@ -19,6 +19,7 @@ app = Flask(__name__)
 def log_request_info():
     if DEBUG:
         print(f"Debug: Incoming request: {request.method} {request.path}")
+        print(f"Debug: Request args: {request.args}")
         print(f"Debug: Request headers: {request.headers}")
         print(f"Debug: Request body: {request.get_data()}")
 
@@ -64,7 +65,7 @@ def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
         print(f"Error: Login failed with status code {response.status_code}. Response: {response.text}")
         return None, None
 
-# Function to fetch workouts from the last 7 days
+# Function to fetch workouts
 def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
     endpoint = WORKOUTS_ENDPOINT.format(exerciser_id=exerciser_id)
     url = f"{BASE_URL}/{endpoint}"
@@ -92,41 +93,10 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
             if DEBUG:
                 print(f"Debug: Total workouts fetched: {len(full_workouts)}")
 
-            # Filter workouts from the last 7 days
-            seven_days_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
-            filtered_workouts = []
-            for workout in full_workouts:
-                workout_time_str = workout.get("workout_time")
-                if workout_time_str:
-                    try:
-                        # Parse the workout_time string into a datetime object
-                        workout_time = datetime.datetime.strptime(workout_time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-                        if workout_time >= seven_days_ago:
-                            filtered_workouts.append(workout)
-                    except Exception as e:
-                        print(f"Error: Failed to parse workout_time '{workout_time_str}'. Exception: {str(e)}")
-                        continue
-            if DEBUG:
-                print(f"Debug: Workouts from the last 7 days: {len(filtered_workouts)}")
+            # Sort workouts by 'workout_time' in descending order (most recent first)
+            full_workouts.sort(key=lambda x: x.get('workout_time', ''), reverse=True)
 
-            # Trim unnecessary fields
-            trimmed_workouts = []
-            for workout in filtered_workouts:
-                trimmed_workout = {
-                    "workout_id": workout.get("workout_id"),
-                    "duration": workout.get("duration"),
-                    "distance": workout.get("distance"),
-                    "calories": workout.get("calories"),
-                    "average_heart_rate": workout.get("average_heart_rate"),
-                    "max_heart_rate": workout.get("max_heart_rate"),
-                    "min_heart_rate": workout.get("min_heart_rate"),
-                    "workout_time": workout.get("workout_time"),
-                    "workout_type": workout.get("workout_type"),
-                    "exercise_title": workout.get("exercise_title"),
-                }
-                trimmed_workouts.append(trimmed_workout)
-
-            return trimmed_workouts
+            return full_workouts
         except Exception as e:
             print(f"Error: Failed to process workouts. Exception: {str(e)}")
             return []
@@ -134,17 +104,25 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
         print(f"Error: Failed to fetch workouts with status code {response.status_code}. Response: {response.text}")
         return []
 
-# API endpoint to serve workout data to Home Assistant
-@app.route('/api/workouts', methods=['GET'])
+# API endpoint to serve a specific workout based on 'n'
+@app.route('/api/workout', methods=['GET'])
 def workout_data():
     global USERNAME, PASSWORD, API_KEY, DEBUG
 
     if DEBUG:
-        print("Debug: Starting /api/workouts endpoint")
+        print("Debug: Starting /api/workout endpoint")
 
     if not USERNAME or not PASSWORD or not API_KEY:
         print("Error: Missing credentials (USERNAME, PASSWORD, API_KEY)")
         return jsonify({"error": "Missing credentials"}), 500
+
+    # Get 'n' parameter from query string (default to 1 if not provided)
+    n = int(request.args.get('n', 1))
+    if n < 1:
+        return jsonify({"error": "Parameter 'n' must be a positive integer"}), 400
+
+    if DEBUG:
+        print(f"Debug: Parameter 'n' received: {n}")
 
     # Log in to the external API
     token, exerciser_id = login(USERNAME, PASSWORD, API_KEY, DEBUG)
@@ -156,17 +134,39 @@ def workout_data():
     if DEBUG:
         print(f"Debug: Successfully logged in. Token: {token}, Exerciser ID: {exerciser_id}")
 
-    # Fetch workouts from the last 7 days
+    # Fetch workouts
     workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
 
     if not workouts:
-        print("Error: No workouts found in the last 7 days.")
+        print("Error: No workouts found.")
         return jsonify({"error": "No workouts found"}), 404
 
-    if DEBUG:
-        print(f"Debug: Returning {len(workouts)} workouts from the last 7 days.")
+    # Ensure 'n' is within the range of available workouts
+    if n > len(workouts):
+        return jsonify({"error": f"Parameter 'n' is out of range. Only {len(workouts)} workouts available."}), 400
 
-    return jsonify({"workouts": workouts}), 200
+    # Get the nth previous workout (1-based indexing)
+    workout = workouts[n - 1]
+
+    if DEBUG:
+        print(f"Debug: Returning workout #{n}")
+
+    # Trim unnecessary fields if needed
+    trimmed_workout = {
+        "workout_id": workout.get("workout_id"),
+        "duration": workout.get("duration"),
+        "distance": workout.get("distance"),
+        "calories": workout.get("calories"),
+        "average_heart_rate": workout.get("average_heart_rate"),
+        "max_heart_rate": workout.get("max_heart_rate"),
+        "min_heart_rate": workout.get("min_heart_rate"),
+        "workout_time": workout.get("workout_time"),
+        "workout_type": workout.get("workout_type"),
+        "exercise_title": workout.get("exercise_title"),
+        # Include other fields if necessary
+    }
+
+    return jsonify({"workout": trimmed_workout}), 200
 
 if __name__ == '__main__':
     # Parse command-line arguments
