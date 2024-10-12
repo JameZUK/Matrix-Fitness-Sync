@@ -167,7 +167,7 @@ ENV NODE_ENV=production
 EXPOSE 5000/tcp
 
 # Copy the workout data script
-# COPY workout_data.py /
+COPY workout_data.py /
 
 # Copy the startup script
 COPY run.sh /
