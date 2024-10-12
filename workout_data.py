@@ -13,6 +13,13 @@ WORKOUTS_ENDPOINT = "exerciser/{exerciser_id}/workouts"
 
 app = Flask(__name__)
 
+# Log incoming requests for debugging
+@app.before_request
+def log_request_info():
+    print(f"Debug: Incoming request: {request.method} {request.path}")
+    print(f"Debug: Request headers: {request.headers}")
+    print(f"Debug: Request body: {request.get_data()}")
+
 # Function to log in using XID
 def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
     url = f"{BASE_URL}/{LOGIN_ENDPOINT}"
@@ -93,12 +100,12 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
         return []
 
 # API endpoint to serve workout data to Home Assistant
-@app.route('/workout_data', methods=['GET'])
+@app.route('/api/workouts', methods=['GET'])
 def workout_data():
     global USERNAME, PASSWORD, API_KEY, DEBUG
 
     if DEBUG:
-        print("Debug: Starting /workout_data endpoint")
+        print("Debug: Starting /api/workouts endpoint")
 
     if not USERNAME or not PASSWORD or not API_KEY:
         print("Error: Missing credentials (USERNAME, PASSWORD, API_KEY)")
