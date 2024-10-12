@@ -27,21 +27,33 @@ def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
     }
 
     if DEBUG:
-        print(f"Debug: Sending POST request to {url}")
+        print(f"Debug: Attempting to log in. POST request to {url}")
         print(f"Debug: Headers: {headers}")
         print(f"Debug: Payload: {json.dumps(payload, indent=2)}")
 
-    response = requests.post(url, json=payload, headers=headers)
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+    except Exception as e:
+        print(f"Error: Failed to send POST request to {url}. Exception: {str(e)}")
+        return None, None
 
     if DEBUG:
-        print(f"Debug: Status Code: {response.status_code}")
-        print(f"Debug: Response Text: {response.text}")
+        print(f"Debug: Login response status code: {response.status_code}")
+        print(f"Debug: Login response content: {response.text}")
 
     if response.status_code == 200:
-        data = response.json()
-        return data.get("token"), data.get("id")
+        try:
+            data = response.json()
+            token = data.get("token")
+            exerciser_id = data.get("id")
+            if DEBUG:
+                print(f"Debug: Successfully logged in. Token: {token}, Exerciser ID: {exerciser_id}")
+            return token, exerciser_id
+        except Exception as e:
+            print(f"Error: Failed to parse login response. Exception: {str(e)}")
+            return None, None
     else:
-        print(f"Login failed: {response.status_code}")
+        print(f"Error: Login failed with status code {response.status_code}. Response: {response.text}")
         return None, None
 
 # Function to fetch workout data from API
@@ -54,19 +66,30 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
     }
 
     if DEBUG:
-        print(f"Debug: Sending GET request to {url}")
+        print(f"Debug: Fetching workouts. GET request to {url}")
         print(f"Debug: Headers: {headers}")
 
-    response = requests.get(url, headers=headers)
+    try:
+        response = requests.get(url, headers=headers)
+    except Exception as e:
+        print(f"Error: Failed to send GET request to {url}. Exception: {str(e)}")
+        return []
 
     if DEBUG:
-        print(f"Debug: Status Code: {response.status_code}")
-        print(f"Debug: Response Text: {response.text}")
+        print(f"Debug: Fetch workouts response status code: {response.status_code}")
+        print(f"Debug: Fetch workouts response content: {response.text}")
 
     if response.status_code == 200:
-        return response.json().get("workouts", [])
+        try:
+            workouts = response.json().get("workouts", [])
+            if DEBUG:
+                print(f"Debug: Successfully fetched workouts. Workout count: {len(workouts)}")
+            return workouts
+        except Exception as e:
+            print(f"Error: Failed to parse workout response. Exception: {str(e)}")
+            return []
     else:
-        print(f"Failed to fetch workouts: {response.status_code}")
+        print(f"Error: Failed to fetch workouts with status code {response.status_code}. Response: {response.text}")
         return []
 
 # API endpoint to serve workout data to Home Assistant
@@ -74,20 +97,37 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
 def workout_data():
     global USERNAME, PASSWORD, API_KEY, DEBUG
 
+    if DEBUG:
+        print("Debug: Starting /workout_data endpoint")
+
     if not USERNAME or not PASSWORD or not API_KEY:
+        print("Error: Missing credentials (USERNAME, PASSWORD, API_KEY)")
         return jsonify({"error": "Missing credentials"}), 500
+
+    if DEBUG:
+        print(f"Debug: Credentials provided. USERNAME: {USERNAME}, PASSWORD: {'*' * len(PASSWORD)}, API_KEY: {'*' * len(API_KEY)}")
 
     # Log in to the external API
     token, exerciser_id = login(USERNAME, PASSWORD, API_KEY, DEBUG)
 
-    if token and exerciser_id:
-        workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
-        if workouts:
-            return jsonify({"workouts": workouts}), 200
-        else:
-            return jsonify({"error": "No workouts found"}), 404
-    else:
+    if not token or not exerciser_id:
+        print("Error: Login failed. Could not retrieve token or exerciser_id.")
         return jsonify({"error": "Login failed"}), 500
+
+    if DEBUG:
+        print(f"Debug: Successfully logged in. Token: {token}, Exerciser ID: {exerciser_id}")
+
+    # Fetch workouts
+    workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
+
+    if not workouts:
+        print("Error: No workouts found or failed to fetch workouts.")
+        return jsonify({"error": "No workouts found"}), 404
+
+    if DEBUG:
+        print(f"Debug: Returning {len(workouts)} workouts.")
+
+    return jsonify({"workouts": workouts}), 200
 
 if __name__ == '__main__':
     # Parse command-line arguments
