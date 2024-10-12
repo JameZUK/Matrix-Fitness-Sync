@@ -11,11 +11,12 @@ export username=$username
 export password=$password
 export api_key=$api_key
 export debug=$debug
+echo $username
 
 # Run the Python script
 while true
 do 
-  python3 workout_data.py "$username" "$password" "$api_key" "$debug"
+  python3 workout_data.py
   sleep 2
   echo "Restarting..."
 done
