@@ -15,8 +15,8 @@ echo $username
 
 # Run the Python script
 while true
-do 
-  python3 workout_data.py
+do
+  python3 workout_data.py --USERNAME $username --PASSWORD $passwors --API_KEY $api_key --DEBUG $debug
   sleep 2
   echo "Restarting..."
 done
