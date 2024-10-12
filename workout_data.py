@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import requests
-import os
 import json
+import argparse
 
 # Version of the script
 SCRIPT_VERSION = "1.0.0"
@@ -14,26 +14,26 @@ WORKOUTS_ENDPOINT = "exerciser/{exerciser_id}/workouts"
 app = Flask(__name__)
 
 # Function to log in using XID
-def login(username, password, api_key, debug=False):
+def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
     url = f"{BASE_URL}/{LOGIN_ENDPOINT}"
     payload = {
-        "username": username,
-        "password": password,
+        "username": USERNAME,
+        "password": PASSWORD,
         "type": "xid"
     }
     headers = {
         "Content-Type": "application/json",
-        "x-api-key": api_key
+        "x-api-key": API_KEY
     }
 
-    if debug:
+    if DEBUG:
         print(f"Debug: Sending POST request to {url}")
         print(f"Debug: Headers: {headers}")
         print(f"Debug: Payload: {json.dumps(payload, indent=2)}")
 
     response = requests.post(url, json=payload, headers=headers)
 
-    if debug:
+    if DEBUG:
         print(f"Debug: Status Code: {response.status_code}")
         print(f"Debug: Response Text: {response.text}")
 
@@ -45,21 +45,21 @@ def login(username, password, api_key, debug=False):
         return None, None
 
 # Function to fetch workout data from API
-def fetch_workouts(token, exerciser_id, api_key, debug=False):
+def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
     endpoint = WORKOUTS_ENDPOINT.format(exerciser_id=exerciser_id)
     url = f"{BASE_URL}/{endpoint}"
     headers = {
         "Authorization": f"Bearer {token}",
-        "x-api-key": api_key
+        "x-api-key": API_KEY
     }
 
-    if debug:
+    if DEBUG:
         print(f"Debug: Sending GET request to {url}")
         print(f"Debug: Headers: {headers}")
 
     response = requests.get(url, headers=headers)
 
-    if debug:
+    if DEBUG:
         print(f"Debug: Status Code: {response.status_code}")
         print(f"Debug: Response Text: {response.text}")
 
@@ -72,20 +72,16 @@ def fetch_workouts(token, exerciser_id, api_key, debug=False):
 # API endpoint to serve workout data to Home Assistant
 @app.route('/workout_data', methods=['GET'])
 def workout_data():
-    # Fetch environment variables and ensure they are available
-    username = os.environ.get("USERNAME")
-    password = os.environ.get("PASSWORD")
-    api_key = os.environ.get("API_KEY")
-    debug = os.environ.get("DEBUG", "false").lower() == "true"
+    global USERNAME, PASSWORD, API_KEY, DEBUG
 
-    if not username or not password or not api_key:
+    if not USERNAME or not PASSWORD or not API_KEY:
         return jsonify({"error": "Missing credentials"}), 500
 
     # Log in to the external API
-    token, exerciser_id = login(username, password, api_key, debug)
+    token, exerciser_id = login(USERNAME, PASSWORD, API_KEY, DEBUG)
 
     if token and exerciser_id:
-        workouts = fetch_workouts(token, exerciser_id, api_key, debug)
+        workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
         if workouts:
             return jsonify({"workouts": workouts}), 200
         else:
@@ -94,14 +90,26 @@ def workout_data():
         return jsonify({"error": "Login failed"}), 500
 
 if __name__ == '__main__':
-    # Check environment variables at startup and print them
-    debug = os.environ.get("DEBUG", "false").lower() == "true"
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Workout Data Server')
+    parser.add_argument('--USERNAME', required=True, help='Username for login')
+    parser.add_argument('--PASSWORD', required=True, help='Password for login')
+    parser.add_argument('--API_KEY', required=True, help='API Key')
+    parser.add_argument('--DEBUG', action='store_true', help='Enable debug mode')
+    args = parser.parse_args()
 
+    # Set the variables globally so they can be accessed in the Flask route
+    USERNAME = args.USERNAME
+    PASSWORD = args.PASSWORD
+    API_KEY = args.API_KEY
+    DEBUG = args.DEBUG
+
+    # Print startup information
     print(f"Starting server - Version: {SCRIPT_VERSION}")
-    print(f"Username: {os.environ.get('USERNAME')}")
-    print(f"Password: {'*' * len(os.environ.get('PASSWORD', ''))}")  # Mask password
-    print(f"API Key: {'*' * len(os.environ.get('API_KEY', ''))}")    # Mask API key
-    print(f"Debug mode: {debug}")
+    print(f"USERNAME: {USERNAME}")
+    print(f"PASSWORD: {'*' * len(PASSWORD)}")  # Mask password
+    print(f"API_KEY: {'*' * len(API_KEY)}")    # Mask API key
+    print(f"DEBUG: {DEBUG}")
 
     # Run the server
-    app.run(host='0.0.0.0', port=5000, debug=debug)
+    app.run(host='0.0.0.0', port=5000, debug=DEBUG)
