@@ -1,5 +1,5 @@
 name: Matrix Workout Data Addon
-version: "2.81"
+version: "2.82"
 slug: workout_data
 description: Exposes workout data via REST API for Home Assistant.
 startup: services
