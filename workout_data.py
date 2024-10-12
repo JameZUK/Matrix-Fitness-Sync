@@ -3,67 +3,6 @@ import requests
 import os
 import json
 
-# API base URL
-BASE_URL = "https://apollo.jfit.co"
-LOGIN_ENDPOINT = "exerciser/login"
-WORKOUTS_ENDPOINT = "exerciser/{exerciser_id}/workouts"
-
-app = Flask(__name__)
-
-# Function to log in using XID
-def login(username, password, api_key, debug=False):
-    url = f"{BASE_URL}/{LOGIN_ENDPOINT}"
-    payload = {
-        "username": username,
-        "password": password,
-        "type": "xid"
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": api_key
-    }
-
-    if debug:
-        print(f"Debug: Sending POST request to {url}")
-        print(f"Debug: Headers: {headers}")
-        print(f"Debug: Payload: {json.dumps(payload, indent=2)}")
-
-    response = requests.post(url, json=payload, headers=headers)
-
-    if debug:
-        print(f"Debug: Status Code: {response.status_code}")
-        print(f"Debug: Response Text: {response.text}")
-
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("token"), data.get("id")
-    else:
-        print(f"Login failed: {response.status_code}")
-        return None, None
-
-# Function to fetch workout data from API
-def fetch_workouts(token, exerciser_id, api_key, debug=False):
-    endpoint = WORKOUTS_ENDPOINT.format(exerciser_id=exerciser_id)
-    url = f"{BASE_URL}/{endpoint}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "x-api-key": api_key
-    }
-
-    if debug:
-        print(f"Debug: Sending GET request to {url}")
-        print(f"Debug: Headers: {headers}")
-
-    response = requests.get(url, headers=headers)
-
-    if debug:
-        print(f"Debug: Status Code: {response.status_code}")
-        print(f"Debug: Response Text: {response.text}")
-from flask import Flask, jsonify, request
-import requests
-import os
-import json
-
 # Version of the script
 SCRIPT_VERSION = "1.0.0"
 
@@ -159,22 +98,6 @@ if __name__ == '__main__':
     debug = os.environ.get("DEBUG", "false").lower() == "true"
 
     print(f"Starting server - Version: {SCRIPT_VERSION}")
-    print(f"Username: {os.environ.get('USERNAME')}")
-    print(f"Password: {'*' * len(os.environ.get('PASSWORD', ''))}")  # Mask password
-    print(f"API Key: {'*' * len(os.environ.get('API_KEY', ''))}")    # Mask API key
-    print(f"Debug mode: {debug}")
-
-    # Run the server
-    app.run(host='0.0.0.0', port=5000, debug=debug)        else:
-            return jsonify({"error": "No workouts found"}), 404
-    else:
-        return jsonify({"error": "Login failed"}), 500
-
-if __name__ == '__main__':
-    # Check environment variables at startup and print them
-    debug = os.environ.get("DEBUG", "false").lower() == "true"
-
-    print(f"Starting server with the following configuration:")
     print(f"Username: {os.environ.get('USERNAME')}")
     print(f"Password: {'*' * len(os.environ.get('PASSWORD', ''))}")  # Mask password
     print(f"API Key: {'*' * len(os.environ.get('API_KEY', ''))}")    # Mask API key
