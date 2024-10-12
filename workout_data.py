@@ -14,14 +14,11 @@ WORKOUTS_ENDPOINT = "exerciser/{exerciser_id}/workouts"
 
 app = Flask(__name__)
 
-# Log incoming requests for debugging
-@app.before_request
-def log_request_info():
-    if DEBUG:
-        print(f"Debug: Incoming request: {request.method} {request.path}")
-        print(f"Debug: Request args: {request.args}")
-        print(f"Debug: Request headers: {request.headers}")
-        print(f"Debug: Request body: {request.get_data()}")
+# Global variables
+USERNAME = ""
+PASSWORD = ""
+API_KEY = ""
+DEBUG = False
 
 # Function to log in using XID
 def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
@@ -106,7 +103,7 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
 
 # API endpoint to serve a specific workout based on 'n'
 @app.route('/api/workout', methods=['GET'])
-def workout_data():
+def get_workout():
     global USERNAME, PASSWORD, API_KEY, DEBUG
 
     if DEBUG:
