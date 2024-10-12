@@ -69,11 +69,11 @@ def fetch_workouts(token, exerciser_id, api_key, debug=False):
 # API endpoint to serve workout data to Home Assistant
 @app.route('/workout_data', methods=['GET'])
 def workout_data():
-    # Load credentials from environment variables
-    username = os.getenv("USERNAME")
-    password = os.getenv("PASSWORD")
-    api_key = os.getenv("API_KEY")
-    debug = os.getenv("DEBUG", "false").lower() == "true"
+    # Fetch environment variables and ensure they are available
+    username = os.environ.get("USERNAME")
+    password = os.environ.get("PASSWORD")
+    api_key = os.environ.get("API_KEY")
+    debug = os.environ.get("DEBUG", "false").lower() == "true"
 
     if not username or not password or not api_key:
         return jsonify({"error": "Missing credentials"}), 500
@@ -91,14 +91,14 @@ def workout_data():
         return jsonify({"error": "Login failed"}), 500
 
 if __name__ == '__main__':
-    # Start the Flask app
-    debug = os.getenv("DEBUG", "false").lower() == "true"
+    # Check environment variables at startup and print them
+    debug = os.environ.get("DEBUG", "false").lower() == "true"
 
-    # Show environment variables (mask sensitive info)
     print(f"Starting server with the following configuration:")
-    print(f"Username: {os.getenv('USERNAME')}")
-    print(f"Password: {'*' * len(os.getenv('PASSWORD', ''))}")  # Mask password
-    print(f"API Key: {'*' * len(os.getenv('API_KEY', ''))}")    # Mask API key
+    print(f"Username: {os.environ.get('USERNAME')}")
+    print(f"Password: {'*' * len(os.environ.get('PASSWORD', ''))}")  # Mask password
+    print(f"API Key: {'*' * len(os.environ.get('API_KEY', ''))}")    # Mask API key
     print(f"Debug mode: {debug}")
 
+    # Run the server
     app.run(host='0.0.0.0', port=5000, debug=debug)
