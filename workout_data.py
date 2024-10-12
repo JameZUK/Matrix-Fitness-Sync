@@ -95,14 +95,16 @@ if __name__ == '__main__':
     parser.add_argument('--USERNAME', required=True, help='Username for login')
     parser.add_argument('--PASSWORD', required=True, help='Password for login')
     parser.add_argument('--API_KEY', required=True, help='API Key')
-    parser.add_argument('--DEBUG', action='store_true', help='Enable debug mode')
+    parser.add_argument('--DEBUG', required=False, default='false', help='Enable debug mode (true/false)')
     args = parser.parse_args()
+
+    # Convert the DEBUG argument to a boolean
+    DEBUG = args.DEBUG.lower() == 'true'
 
     # Set the variables globally so they can be accessed in the Flask route
     USERNAME = args.USERNAME
     PASSWORD = args.PASSWORD
     API_KEY = args.API_KEY
-    DEBUG = args.DEBUG
 
     # Print startup information
     print(f"Starting server - Version: {SCRIPT_VERSION}")
