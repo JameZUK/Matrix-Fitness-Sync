@@ -3,6 +3,7 @@ import requests
 import json
 import argparse
 import datetime
+from waitress import serve  # Import Waitress
 
 # Version of the script
 SCRIPT_VERSION = "1.0.0"
@@ -114,7 +115,11 @@ def get_workout():
         return jsonify({"error": "Missing credentials"}), 500
 
     # Get 'n' parameter from query string (default to 1 if not provided)
-    n = int(request.args.get('n', 1))
+    try:
+        n = int(request.args.get('n', 1))
+    except ValueError:
+        return jsonify({"error": "Parameter 'n' must be an integer"}), 400
+
     if n < 1:
         return jsonify({"error": "Parameter 'n' must be a positive integer"}), 400
 
@@ -189,5 +194,5 @@ if __name__ == '__main__':
     print(f"API_KEY: {'*' * len(API_KEY)}")    # Mask API key
     print(f"DEBUG: {DEBUG}")
 
-    # Run the server
-    app.run(host='0.0.0.0', port=5000, debug=DEBUG)
+    # Run the server using Waitress
+    serve(app, host='0.0.0.0', port=5000, threads=4, url_scheme='http')
