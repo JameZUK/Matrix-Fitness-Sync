@@ -158,7 +158,7 @@ LABEL \
 ENV LANG C.UTF-8
 ENV LC_ALL C.UTF-8
 
-RUN pip install flask requests
+RUN pip install flask requests waitress
 
 # Set working directory
 # WORKDIR /app
