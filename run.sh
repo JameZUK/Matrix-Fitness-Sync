@@ -1,5 +1,5 @@
 #!/usr/bin/with-contenv bashio
-echo "Starting Flask server..."
+echo "Starting Matrix Fitness API server..."
 
 # Load options from config
 username=$(bashio::config 'username')
@@ -11,7 +11,6 @@ export username=$username
 export password=$password
 export api_key=$api_key
 export debug=$debug
-echo $username
 
 # Run the Python script
 while true
