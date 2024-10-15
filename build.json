@@ -1,0 +1,7 @@
+{
+  "build_from": {
+    "aarch64": "armv7-base-python",
+    "amd64": "amd64-base-python",
+    "armv7": "lscr.io/linuxserver/piwigo:arm32v7-13.7.0"
+  }
+}
