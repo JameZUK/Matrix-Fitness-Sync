@@ -4,9 +4,11 @@ import json
 import argparse
 import datetime
 from waitress import serve  # Import Waitress
+import threading
+import time
 
 # Version of the script
-SCRIPT_VERSION = "1.0.0"
+SCRIPT_VERSION = "1.1.0"
 
 # API base URL
 BASE_URL = "https://apollo.jfit.co"
@@ -20,8 +22,16 @@ USERNAME = ""
 PASSWORD = ""
 API_KEY = ""
 DEBUG = False
+POLL_SECONDS = 60  # Default polling interval
 
-# Function to log in using XID
+# Cache for workouts
+cache = {
+    "workouts": [],
+    "last_updated": None,
+    "error": None
+}
+cache_lock = threading.Lock()
+
 def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
     url = f"{BASE_URL}/{LOGIN_ENDPOINT}"
     payload = {
@@ -63,7 +73,6 @@ def login(USERNAME, PASSWORD, API_KEY, DEBUG=False):
         print(f"Error: Login failed with status code {response.status_code}. Response: {response.text}")
         return None, None
 
-# Function to fetch workouts
 def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
     endpoint = WORKOUTS_ENDPOINT.format(exerciser_id=exerciser_id)
     url = f"{BASE_URL}/{endpoint}"
@@ -102,17 +111,44 @@ def fetch_workouts(token, exerciser_id, API_KEY, DEBUG=False):
         print(f"Error: Failed to fetch workouts with status code {response.status_code}. Response: {response.text}")
         return []
 
-# API endpoint to serve a specific workout based on 'n'
+def poll_external_api():
+    global cache
+    while True:
+        if DEBUG:
+            print(f"Debug: Starting polling cycle at {datetime.datetime.now()}")
+
+        token, exerciser_id = login(USERNAME, PASSWORD, API_KEY, DEBUG)
+
+        if token and exerciser_id:
+            workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
+            with cache_lock:
+                if workouts:
+                    cache["workouts"] = workouts
+                    cache["last_updated"] = datetime.datetime.utcnow().isoformat() + "Z"
+                    cache["error"] = None
+                    if DEBUG:
+                        print(f"Debug: Cache updated with {len(workouts)} workouts.")
+                else:
+                    cache["error"] = "No workouts fetched."
+                    if DEBUG:
+                        print("Debug: No workouts fetched during this cycle.")
+        else:
+            with cache_lock:
+                cache["error"] = "Failed to log in."
+                if DEBUG:
+                    print("Debug: Failed to log in during this polling cycle.")
+
+        if DEBUG:
+            print(f"Debug: Polling cycle completed. Sleeping for {POLL_SECONDS} seconds.")
+
+        time.sleep(POLL_SECONDS)
+
 @app.route('/api/workout', methods=['GET'])
 def get_workout():
-    global USERNAME, PASSWORD, API_KEY, DEBUG
+    global cache
 
     if DEBUG:
         print("Debug: Starting /api/workout endpoint")
-
-    if not USERNAME or not PASSWORD or not API_KEY:
-        print("Error: Missing credentials (USERNAME, PASSWORD, API_KEY)")
-        return jsonify({"error": "Missing credentials"}), 500
 
     # Get 'n' parameter from query string (default to 1 if not provided)
     try:
@@ -126,22 +162,14 @@ def get_workout():
     if DEBUG:
         print(f"Debug: Parameter 'n' received: {n}")
 
-    # Log in to the external API
-    token, exerciser_id = login(USERNAME, PASSWORD, API_KEY, DEBUG)
+    with cache_lock:
+        if cache["error"]:
+            return jsonify({"error": cache["error"]}), 500
 
-    if not token or not exerciser_id:
-        print("Error: Login failed. Could not retrieve token or exerciser_id.")
-        return jsonify({"error": "Login failed"}), 500
-
-    if DEBUG:
-        print(f"Debug: Successfully logged in. Token: {token}, Exerciser ID: {exerciser_id}")
-
-    # Fetch workouts
-    workouts = fetch_workouts(token, exerciser_id, API_KEY, DEBUG)
+        workouts = cache["workouts"]
 
     if not workouts:
-        print("Error: No workouts found.")
-        return jsonify({"error": "No workouts found"}), 404
+        return jsonify({"error": "No workouts available. Please wait for the first polling cycle."}), 503
 
     # Ensure 'n' is within the range of available workouts
     if n > len(workouts):
@@ -170,19 +198,34 @@ def get_workout():
 
     return jsonify({"workout": trimmed_workout}), 200
 
+def start_polling_thread():
+    polling_thread = threading.Thread(target=poll_external_api, daemon=True)
+    polling_thread.start()
+    if DEBUG:
+        print("Debug: Polling thread started.")
+
 if __name__ == '__main__':
+    import sys
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Workout Data Server')
     parser.add_argument('--USERNAME', required=True, help='Username for login')
     parser.add_argument('--PASSWORD', required=True, help='Password for login')
     parser.add_argument('--API_KEY', required=True, help='API Key')
     parser.add_argument('--DEBUG', required=False, default='false', help='Enable debug mode (true/false)')
+    parser.add_argument('--poll_seconds', required=False, type=int, default=60, help='Polling interval in seconds')
     args = parser.parse_args()
 
     # Convert the DEBUG argument to a boolean
     DEBUG = args.DEBUG.lower() == 'true'
 
-    # Set the variables globally so they can be accessed in the Flask route
+    # Set the polling interval
+    POLL_SECONDS = args.poll_seconds
+    if POLL_SECONDS < 5:
+        print("Warning: Polling interval too low. Setting to minimum of 5 seconds.")
+        POLL_SECONDS = 5
+
+    # Set the variables globally so they can be accessed in the polling thread and Flask route
     USERNAME = args.USERNAME
     PASSWORD = args.PASSWORD
     API_KEY = args.API_KEY
@@ -193,6 +236,14 @@ if __name__ == '__main__':
     print(f"PASSWORD: {'*' * len(PASSWORD)}")  # Mask password
     print(f"API_KEY: {'*' * len(API_KEY)}")    # Mask API key
     print(f"DEBUG: {DEBUG}")
+    print(f"POLL_SECONDS: {POLL_SECONDS}")
+
+    # Start the background polling thread
+    start_polling_thread()
 
     # Run the server using Waitress
-    serve(app, host='0.0.0.0', port=5000, threads=4, url_scheme='http')
+    try:
+        serve(app, host='0.0.0.0', port=5000, threads=4, url_scheme='http')
+    except KeyboardInterrupt:
+        print("Shutting down server...")
+        sys.exit(0)
