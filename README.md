@@ -1,3 +1,4 @@
+
 # Matrix-Fitness-Sync Home Assistant Add-on
 
 Matrix-Fitness-Sync is a Home Assistant add-on designed to sync fitness data from Matrix fitness equipment (e.g., treadmills, bikes) to Home Assistant. The add-on collects workout data and exposes it through a REST API, allowing easy integration with Home Assistant sensors to monitor your workouts directly from the Home Assistant dashboard.
@@ -6,8 +7,18 @@ Matrix-Fitness-Sync is a Home Assistant add-on designed to sync fitness data fro
 
 - Sync workout data from Matrix fitness equipment
 - Exposes workout data via a REST API for easy integration
-- Can be integrated into Home Assistant as REST sensors
+- Configurable polling interval for fetching workout data
 - Provides detailed workout metrics like duration, distance, calories burned, and heart rate statistics
+- Built-in caching to reduce redundant API calls
+- Waitress-based web server for enhanced performance
+- Logging with optional debug mode
+
+## New Features in v1.1.1
+
+- **Waitress Web Server**: The Flask app is now served using Waitress, improving performance and scalability.
+- **Custom Polling Interval**: The polling interval is now configurable with a minimum of 120 seconds.
+- **Improved Logging**: Enhanced logging system with DEBUG and INFO modes to capture more detailed events.
+- **Global Cache Locking**: Thread-safe cache with locking ensures consistent and up-to-date workout data.
 
 ## Installation
 
@@ -88,7 +99,7 @@ Replace `<DOCKERNAME>` with the actual Docker container name or IP address where
 
 ### Template Sensors
 
-You can define individual template sensors to extract specific attributes from the latest workout:
+You can define individual template sensors to extract specific attributes from the latest workout, with number rounding applied:
 
 ```yaml
 sensor:
@@ -97,27 +108,27 @@ sensor:
       workout_duration:
         friendly_name: "Workout Duration"
         unit_of_measurement: "minutes"
-        value_template: "{{ state_attr('sensor.latest_workout', 'duration') | int / 60 }}"
+        value_template: "{{ (state_attr('sensor.latest_workout', 'duration') | int / 60) | round(2) }}"
       workout_distance:
         friendly_name: "Workout Distance"
         unit_of_measurement: "km"
-        value_template: "{{ state_attr('sensor.latest_workout', 'distance') | float / 1000 }}"
+        value_template: "{{ (state_attr('sensor.latest_workout', 'distance') | float / 1000) | round(2) }}"
       workout_calories:
         friendly_name: "Workout Calories"
         unit_of_measurement: "kcal"
-        value_template: "{{ state_attr('sensor.latest_workout', 'calories') }}"
+        value_template: "{{ state_attr('sensor.latest_workout', 'calories') | round(2) }}"
       workout_average_heart_rate:
         friendly_name: "Average Heart Rate"
         unit_of_measurement: "bpm"
-        value_template: "{{ state_attr('sensor.latest_workout', 'average_heart_rate') }}"
+        value_template: "{{ state_attr('sensor.latest_workout', 'average_heart_rate') | round(2) }}"
       workout_max_heart_rate:
         friendly_name: "Max Heart Rate"
         unit_of_measurement: "bpm"
-        value_template: "{{ state_attr('sensor.latest_workout', 'max_heart_rate') }}"
+        value_template: "{{ state_attr('sensor.latest_workout', 'max_heart_rate') | round(2) }}"
       workout_min_heart_rate:
         friendly_name: "Min Heart Rate"
         unit_of_measurement: "bpm"
-        value_template: "{{ state_attr('sensor.latest_workout', 'min_heart_rate') }}"
+        value_template: "{{ state_attr('sensor.latest_workout', 'min_heart_rate') | round(2) }}"
 ```
 
 ### Example Dashboard Card
