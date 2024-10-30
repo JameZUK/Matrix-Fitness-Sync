@@ -3,10 +3,11 @@ import requests
 import json
 import argparse
 import datetime
-from waitress import serve  # Import Waitress
+from waitress import serve
 import threading
 import time
 import logging
+import sys
 
 # Version of the script
 SCRIPT_VERSION = "1.1.1"
@@ -24,6 +25,7 @@ PASSWORD = ""
 API_KEY = ""
 DEBUG = False
 POLL_SECONDS = 60  # Default polling interval
+MIN_POLL_SECONDS = 120  # Minimum polling interval set to 120 seconds
 
 # Cache for workouts
 cache = {
@@ -32,6 +34,9 @@ cache = {
     "error": None
 }
 cache_lock = threading.Lock()
+
+# Flag to prevent multiple initializations
+INITIALIZED = False
 
 def setup_logging():
     """Configure logging based on DEBUG flag."""
@@ -147,6 +152,11 @@ def poll_external_api():
         logging.debug(f"Polling cycle completed. Sleeping for {POLL_SECONDS} seconds.")
         time.sleep(POLL_SECONDS)
 
+def start_polling_thread():
+    polling_thread = threading.Thread(target=poll_external_api, daemon=True)
+    polling_thread.start()
+    logging.debug("Polling thread started.")
+
 @app.route('/api/workout', methods=['GET'])
 def get_workout():
     global cache
@@ -199,13 +209,11 @@ def get_workout():
 
     return jsonify({"workout": trimmed_workout}), 200
 
-def start_polling_thread():
-    polling_thread = threading.Thread(target=poll_external_api, daemon=True)
-    polling_thread.start()
-    logging.debug("Polling thread started.")
-
-if __name__ == '__main__':
-    import sys
+def initialize_app():
+    global INITIALIZED, USERNAME, PASSWORD, API_KEY, DEBUG, POLL_SECONDS
+    if INITIALIZED:
+        return  # Avoid re-initialization
+    INITIALIZED = True
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Workout Data Server')
@@ -216,23 +224,22 @@ if __name__ == '__main__':
     parser.add_argument('--poll_seconds', required=False, type=int, default=60, help='Polling interval in seconds')
     args = parser.parse_args()
 
-    # Convert the DEBUG argument to a boolean
-    DEBUG = args.DEBUG.lower() == 'true'
-
-    # Configure logging
-    setup_logging()
-
-    # Set the polling interval
-    POLL_SECONDS = args.poll_seconds
-    MIN_POLL_SECONDS = 120  # Minimum polling interval set to 120 seconds
-    if POLL_SECONDS < MIN_POLL_SECONDS:
-        logging.warning(f"Polling interval too low ({POLL_SECONDS}s). Setting to minimum of {MIN_POLL_SECONDS} seconds.")
-        POLL_SECONDS = MIN_POLL_SECONDS
-
     # Set the variables globally so they can be accessed in the polling thread and Flask route
     USERNAME = args.USERNAME
     PASSWORD = args.PASSWORD
     API_KEY = args.API_KEY
+
+    # Convert the DEBUG argument to a boolean
+    DEBUG = args.DEBUG.lower() == 'true'
+
+    # Set the polling interval
+    POLL_SECONDS = args.poll_seconds
+    if POLL_SECONDS < MIN_POLL_SECONDS:
+        logging.warning(f"Polling interval too low ({POLL_SECONDS}s). Setting to minimum of {MIN_POLL_SECONDS} seconds.")
+        POLL_SECONDS = MIN_POLL_SECONDS
+
+    # Configure logging
+    setup_logging()
 
     # Print startup information
     logging.info(f"Starting server - Version: {SCRIPT_VERSION}")
@@ -245,7 +252,10 @@ if __name__ == '__main__':
     # Start the background polling thread
     start_polling_thread()
 
-    # Run the server using Waitress
+# Initialize the application upon import
+initialize_app()
+
+if __name__ == '__main__':
     try:
         serve(app, host='0.0.0.0', port=5000, threads=4, url_scheme='http')
     except KeyboardInterrupt:
