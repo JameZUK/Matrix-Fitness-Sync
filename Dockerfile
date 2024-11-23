@@ -1,31 +1,35 @@
+# Use the base image specified in build.json
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
 # Set environment variables
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    NODE_ENV=production
 
-# Install Python packages on system level --> PEP668
-ENV PIP_BREAK_SYSTEM_PACKAGES=1
+# Install necessary packages (if any)
+# For Node.js base images, Node.js and npm are pre-installed
 
-RUN pip install flask requests waitress
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# Set working directory
-# WORKDIR /app
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
-ENV NODE_ENV=production
+# Install app dependencies using npm ci for a clean install
+RUN npm ci --only=production
 
-# Expose port 5000
-EXPOSE 5000/tcp
+# Copy the rest of the application source code
+COPY . .
 
-# Copy the workout data script
-COPY workout_data.py /
-
-# Copy the startup script
-COPY run.sh /
+# Copy the run.sh script to the root directory
+COPY run.sh /run.sh
 
 # Make the run.sh script executable
-# RUN chmod +x /run.sh
-RUN chmod a+x /run.sh
-# Start the Flask server
+RUN chmod +x /run.sh
+
+# Expose the port your app runs on (assuming 3000)
+EXPOSE 3000
+
+# Start the application using run.sh
 CMD ["/run.sh"]
